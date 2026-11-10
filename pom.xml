@@ -81,7 +81,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.2.0</version>
                 <configuration>
-                    <mainClass>it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp</mainClass>
+                    <mainClass>it.uniroma3.hw3.cli.SearchApp</mainClass>
                 </configuration>
             </plugin>
 
@@ -99,7 +99,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp</mainClass>
+                                    <mainClass>it.uniroma3.hw3.cli.SearchApp</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
