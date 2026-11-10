@@ -1,6 +1,9 @@
 package it.uniroma3.hw3.benchmark;
 
 import it.uniroma3.hw3.exception.BenchmarkException;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 
 import java.io.*;
 import java.net.URI;
@@ -158,7 +161,8 @@ public class CorpusDatasetManager {
     }
 
     /**
-     * Estrae un sottoinsieme di file testuali da un archivio ZIP (es. 20 Newsgroups).
+     * Estrae un sottoinsieme di file testuali dall'archivio master dei 20 Newsgroups.
+     * Gestisce sia zip standard che archivi con tar.gz annidato (come mini_newsgroups.tar.gz).
      */
     public int extractNewsgroupsSubset(Path zipFile, Path outputDir, int maxFiles) throws IOException {
         int extracted = 0;
@@ -169,19 +173,88 @@ public class CorpusDatasetManager {
                     continue;
                 }
                 String name = entry.getName();
-                // Consideriamo i gruppi tecnici rilevanti
-                if (name.contains("comp.") || name.contains("sci.crypt") || name.contains("sci.space")) {
-                    String sanitizedName = name.replace('/', '_').replace('\\', '_');
-                    if (!sanitizedName.endsWith(".txt")) {
-                        sanitizedName += ".txt";
-                    }
-                    Path outFile = outputDir.resolve(sanitizedName);
-                    Files.copy(zis, outFile, StandardCopyOption.REPLACE_EXISTING);
-                    extracted++;
+                if (name.endsWith("mini_newsgroups.tar.gz")) {
+                    extracted += extractFromTarGzStream(zis, outputDir, maxFiles - extracted);
+                    break;
                 }
             }
         }
         return extracted;
+    }
+
+    private int extractFromTarGzStream(InputStream inputStream, Path outputDir, int maxFiles) throws IOException {
+        int count = 0;
+        // Non chiudiamo l'inputStream sottostante per non interrompere lo ZipInputStream esterno
+        GzipCompressorInputStream gzipIn = new GzipCompressorInputStream(new CloseShieldInputStream(inputStream));
+        try (TarArchiveInputStream tarIn = new TarArchiveInputStream(gzipIn)) {
+            TarArchiveEntry entry;
+            while ((entry = tarIn.getNextEntry()) != null && count < maxFiles) {
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                if (name.contains("comp.") || name.contains("sci.")) {
+                    byte[] rawBytes = tarIn.readAllBytes();
+                    String rawText = new String(rawBytes, StandardCharsets.ISO_8859_1);
+
+                    // Estraiamo il subject dal post Usenet per formare un nome di file descrittivo
+                    String subject = extractSubject(rawText);
+                    String group = extractGroupName(name);
+                    String docId = extractDocId(name);
+
+                    String safeSubject = sanitizeFileName(subject);
+                    if (safeSubject.length() > 50) {
+                        safeSubject = safeSubject.substring(0, 50);
+                    }
+
+                    String fileName = String.format("news_%s_%s%s.txt",
+                            group,
+                            docId,
+                            safeSubject.isBlank() ? "" : "_" + safeSubject);
+
+                    Path outFile = outputDir.resolve(fileName);
+                    Files.writeString(outFile, rawText, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    private String extractSubject(String rawText) {
+        for (String line : rawText.split("\\R")) {
+            if (line.toLowerCase().startsWith("subject:")) {
+                return line.substring(8).trim();
+            }
+            if (line.isBlank()) {
+                break; // I metadata terminano con una riga vuota
+            }
+        }
+        return "";
+    }
+
+    private String extractGroupName(String tarEntryName) {
+        String[] parts = tarEntryName.replace('\\', '/').split("/");
+        if (parts.length >= 2) {
+            return parts[parts.length - 2].replace("comp.", "").replace("sci.", "");
+        }
+        return "tech";
+    }
+
+    private String extractDocId(String tarEntryName) {
+        String[] parts = tarEntryName.replace('\\', '/').split("/");
+        return parts[parts.length - 1];
+    }
+
+    private static class CloseShieldInputStream extends FilterInputStream {
+        protected CloseShieldInputStream(InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public void close() {
+            // Ignora la chiusura per preservare lo stream principale
+        }
     }
 
     private void writeDocumentFile(Path outputDir, String prefix, String id, String title, String content) throws IOException {

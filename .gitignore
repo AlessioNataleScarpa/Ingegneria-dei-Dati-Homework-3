@@ -1,3 +1,11 @@
 AGENTS.md
-
 .istruzioni\ eseguibili.sh
+
+# Maven build artifacts
+target/
+
+# Lucene indexes
+indexes/
+
+# Corpora cache and downloaded benchmark datasets
+data/corpora/

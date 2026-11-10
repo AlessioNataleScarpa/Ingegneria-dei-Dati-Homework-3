@@ -10,6 +10,8 @@ import org.apache.lucene.document.TextField;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,8 +82,11 @@ public class LuceneDocumentBuilder implements DocumentBuilder {
         String absolutePath = filePath.toAbsolutePath().toString();
         long fileSize = Files.size(filePath);
 
-        // Streaming del contenuto con BufferedReader per alta efficienza di memoria
-        BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
+        // Streaming del contenuto con gestione resiliente dei charset non-UTF8 (es. Usenet Latin-1)
+        var decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(Files.newInputStream(filePath), decoder));
         // TextField(name, Reader) tokenizza il flusso durante l'inversione dell'indice
         doc.add(new TextField(FIELD_CONTENT, reader));
 

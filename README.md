@@ -6,17 +6,25 @@ Progetto completo per l'Homework 3 del corso di **Ingegneria dei Dati**, basato 
 
 ## 🚀 Caratteristiche Principali
 - **Doppio Indice Fisico Indipendente**:
-  - `indexes/filename_index`: Indice A per i nomi di file (tokenizzazione basata su regex delimitatori, lowercase, no stop-words né stemming).
-  - `indexes/content_index`: Indice B per il testo (elisione italiana, ASCII folding accenti, stop-words italiano/inglese e stemming morfologico Snowball).
-- **Searcher conforme alla traccia**:
+  - `indexes/filename_index`: **Indice A** per i nomi e i percorsi dei file (tokenizzazione basata su regex delimitatori `[_\-\.\s\(\)\[\]\+]+`, lowercase, no stop-words né stemming per preservare estensioni, codici e componenti semantiche).
+  - `indexes/content_index`: **Indice B** per il testo dei documenti (tokenizzazione conforme Unicode UAX#29, elisione italiana `ElisionFilter`, rimozione accenti `ASCIIFoldingFilter`, stop-words bilingue IT+EN e stemming morfologico Snowball `ItalianStemmer`).
+- **Motore di Ricerca Conforme alle Specifiche**:
   - Sintassi: `nome <query>` e `contenuto <query>`.
-  - Supporto a **TermQuery**, **BooleanQuery** (`AND`, `OR`, `NOT`) e **PhraseQuery** esatta con virgolette `"..."`.
-  - Stampa ordinata: hit count, tempo di esecuzione in ms, score probabilistico BM25, nome file e path relativo.
-- **Suite di Benchmark Sperimentale**:
-  - Generatore controllato di corpus sintetico (100–1.000+ file .txt).
-  - Misurazione tempi di indicizzazione, throughput (docs/s e MB/s), spazio su disco e latenze medie su 12 diverse tipologie di query.
-- **Relazione Tecnica Completa**:
-  - Documento [RELAZIONE.md](RELAZIONE.md) pronto per la consegna del 13 Novembre 2026 corredato da dati sperimentali reali.
+  - Supporto a **TermQuery** (termine singolo), **BooleanQuery** (`AND`, `OR`, `NOT`) e **PhraseQuery** esatta posizionale con virgolette `"..."`.
+  - Stampa ordinata con metadati completi: hit totali, tempo di esecuzione in millisecondi, score probabilistico BM25, nome del file e percorso relativo/assoluto.
+- **Suite di Benchmark Multi-Dominio su Collezioni Reali di Letteratura IR**:
+  - Integrazione automatica e download on-the-fly con caching di 3 collezioni consolidate:
+    1. **CISI**: 1.460 abstract in *Information Science*.
+    2. **Cranfield**: 1.398 abstract in *Ingegneria Aeronautica*.
+    3. **20 Newsgroups (Comp/Sci)**: 900 post Usenet reali in *Informatica, Hardware e Crittografia*.
+  - Suite di 27 query autentiche derivate dai topic IR originali.
+  - Misurazione tempi di indicizzazione, throughput (docs/s e MB/s), footprint su disco e latenze di risposta.
+- **Architettura OOA/D Rigorosa**:
+  - GRASP Controller / GoF Facade (`SearchEngineFacade`).
+  - GoF Strategy per gli Analyzer (`AnalyzerStrategy`, `AnalyzerProvider`).
+  - Separazione completa tra presentation layer CLI, logica applicativa e librerie native Lucene.
+- **Relazione Tecnica Ufficiale**:
+  - Disponibile nel file [RELAZIONE.md](RELAZIONE.md), corredata da diagrammi architetturali, spiegazioni linguistiche degli analyzer, dati sperimentali completi e dimostrazione matematica del ranking Okapi BM25.
 
 ---
 
@@ -31,63 +39,98 @@ Progetto completo per l'Homework 3 del corso di **Ingegneria dei Dati**, basato 
 Dalla cartella principale del progetto:
 
 ```bash
-# 1. Compilazione pulita ed esecuzione dei test unitari (JUnit 5)
+# Compilazione ed esecuzione di tutti i test unitari e di integrazione (JUnit 5)
 mvn clean test
-
-# 2. Copia delle dipendenze runtime nella cartella target/lib
-mvn dependency:copy-dependencies -DoutputDirectory=target/lib -DincludeScope=runtime -q
 ```
 
 ---
 
 ## 🔍 Esecuzione dell'Applicazione (CLI)
 
-### Modalità Interattiva
-Avvia la console interattiva con menu a scelta:
-```bash
-java -cp "target/classes;target/lib/*" it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp
-```
-All'interno della console è possibile:
-1. Indicizzare qualsiasi cartella locale contenente file `.txt`.
-2. Eseguire ricerche digitando `nome <query>` oppure `contenuto <query>`.
-3. Lanciare il benchmark automatizzato.
-4. Generare dataset di test sintetici di qualsiasi dimensione.
+Il progetto è configurato con `exec-maven-plugin` per avviare direttamente la classe principale `it.uniroma3.hw3.cli.SearchApp`.
 
-### Modalità Parametrica Diretta da Terminale
-Puoi eseguire ricerche immediate senza avviare il menu interattivo:
+### 1. Modalità Interattiva (REPL)
+Avvia la console interattiva con prompt `lucene-cli>`:
 
 ```bash
-# Ricerca sul nome del file per singolo termine
-java -cp "target/classes;target/lib/*" it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp search nome ingegneria
-
-# Ricerca sul nome del file con PhraseQuery esatta
-java -cp "target/classes;target/lib/*" it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp search nome "\"ingegneria dei dati\""
-
-# Ricerca sul contenuto con operatori booleani (AND)
-java -cp "target/classes;target/lib/*" it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp search contenuto database AND ottimizzazione
-
-# Ricerca sul contenuto con operatore NOT
-java -cp "target/classes;target/lib/*" it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp search contenuto algoritmo AND NOT deadlock
-
-# Ricerca sul contenuto con PhraseQuery esatta
-java -cp "target/classes;target/lib/*" it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp search contenuto "\"indice inverso\""
+mvn exec:java
 ```
 
-### Esecuzione Benchmark Sperimentale
+All'interno della console è possibile digitare i comandi:
+- `index <cartella>`: indicizza tutti i file `.txt` della cartella selezionata costruendo entrambi gli indici.
+- `search nome <query>`: esegue una query sull'indice del nome del file.
+- `search contenuto <query>`: esegue una query sull'indice del contenuto del file.
+- `benchmark [all|cisi|cran|news]`: lancia la sessione di benchmark scientifico.
+- `help`: mostra la guida rapida dei comandi.
+- `exit`: termina la sessione.
+
+### 2. Modalità One-Shot da Riga di Comando
+È possibile eseguire comandi immediati passando gli argomenti via Maven:
+
 ```bash
-java -cp "target/classes;target/lib/*" it.uniroma3.ingegneriadeidati.hw3.cli.SearchApp benchmark 1000
+# 1. Indicizzazione di una cartella locale
+mvn exec:java -D"exec.args=index data/documents"
+
+# 2. Ricerca sul nome del file per termine singolo
+mvn exec:java -D"exec.args=search nome ingegneria"
+
+# 3. Ricerca sul nome con PhraseQuery esatta
+mvn exec:java -D"exec.args=search nome '\"dewey decimal\"'"
+
+# 4. Ricerca sul contenuto con operatori booleani (AND)
+mvn exec:java -D"exec.args=search contenuto 'database AND ottimizzazione'"
+
+# 5. Ricerca sul contenuto con operatore NOT
+mvn exec:java -D"exec.args=search contenuto 'retrieval NOT automatic'"
+
+# 6. Ricerca sul contenuto con PhraseQuery posizionale
+mvn exec:java -D"exec.args=search contenuto '\"boundary layer\"'"
+
+# 7. Esecuzione benchmark multi-dominio completo
+mvn exec:java -D"exec.args=benchmark all"
 ```
 
 ---
 
-## 📊 Sintesi Risultati Sperimentali (1.000 Documenti)
+## 📊 Sintesi dei Risultati Sperimentali
 
-| Metrica | Indice A (Filename) | Indice B (Content) |
-| :--- | :--- | :--- |
-| **Documenti indicizzati** | 1.000 | 1.000 |
-| **Tempo di indicizzazione** | **976 ms** | **1.610 ms** |
-| **Dimensione su disco** | **66,75 KB** | **365,49 KB** |
-| **Throughput indicizzazione** | **1.024,6 docs/s** | **621,1 docs/s** |
-| **Latenza media di ricerca** | **2,879 ms** | **2,165 ms** |
+La tabella seguente riassume i dati sperimentali reali raccolti su **3.758 documenti scientifici**:
 
-Per l'analisi teorica completa, le formule BM25 e la spiegazione dettagliata degli Analyzer, consulta [RELAZIONE.md](RELAZIONE.md).
+| Metrica | CISI (1.460 doc) | Cranfield (1.398 doc) | 20 Newsgroups (900 doc) |
+| :--- | :---: | :---: | :---: |
+| **Tempo Indice A (Filename)** | 1.557 ms | 535 ms | 352 ms |
+| **Tempo Indice B (Content)** | 2.285 ms | 1.862 ms | 1.748 ms |
+| **Dimensione Indice A** | 196,02 KB | 203,83 KB | 115,97 KB |
+| **Dimensione Indice B** | 491,95 KB | 535,13 KB | 920,05 KB |
+| **Throughput Indice B** | 638,9 docs/s | 750,8 docs/s | 514,9 docs/s |
+| **Latenza Media Indice A** | 2,035 ms | 1,807 ms | 1,349 ms |
+| **Latenza Media Indice B** | 8,613 ms | 11,477 ms | 12,257 ms |
+
+Per la discussione teorica completa, le scelte degli Analyzer e l'analisi matematica di BM25, fare riferimento a [RELAZIONE.md](RELAZIONE.md).
+
+---
+
+## 📁 Struttura del Progetto
+
+```
+HW3/
+├── pom.xml                                   # Configurazione Maven e dipendenze Lucene 9.12.0
+├── RELAZIONE.md                              # Relazione tecnica ufficiale per il docente
+├── README.md                                 # Documentazione operativa e guida rapida
+├── indexes/                                  # Directory degli indici Lucene fisici
+│   ├── filename_index/                       # Indice A: Nomi dei file
+│   └── content_index/                        # Indice B: Contenuto dei file
+├── data/
+│   ├── corpora/                              # Cache locale e dataset estratti (cisi, cran, news)
+│   └── documents/                            # Cartella per file di test utente
+└── src/
+    ├── main/java/it/uniroma3/hw3/
+    │   ├── model/                            # Domain Model & Value Objects immutabili (SearchHit, IndexMetrics)
+    │   ├── exception/                        # Gerarchia delle eccezioni tipizzate
+    │   ├── analysis/                         # FilenameAnalyzer, ContentAnalyzer, AnalyzerStrategy
+    │   ├── indexing/                         # LuceneDocumentBuilder, LuceneIndexManager
+    │   ├── searching/                        # LuceneSearchService (BM25, NRT, QueryParser)
+    │   ├── benchmark/                        # BenchmarkService, CorpusDatasetManager (CISI, Cranfield, Newsgroups)
+    │   └── cli/                              # SearchEngineFacade, SearchApp (CLI interattiva e one-shot)
+    └── test/java/it/uniroma3/hw3/            # Suite di test unitari JUnit 5
+```

@@ -41,6 +41,13 @@
             <version>${lucene.version}</version>
         </dependency>
 
+        <!-- Apache Commons Compress per estrazione tar.gz nei benchmark -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.26.2</version>
+        </dependency>
+
         <!-- JUnit 5 for Unit & Integration Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
