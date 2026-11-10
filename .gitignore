@@ -4,8 +4,11 @@ AGENTS.md
 # Maven build artifacts
 target/
 
+# Data and Corpora
+data/
+
 # Lucene indexes
 indexes/
 
-# Corpora cache and downloaded benchmark datasets
-data/corpora/
+# Documentation / reports not to be tracked
+RELAZIONE.md
