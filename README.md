@@ -13,10 +13,11 @@ Progetto completo per l'Homework 3 del corso di **Ingegneria dei Dati**, basato 
   - Supporto a **TermQuery** (termine singolo), **BooleanQuery** (`AND`, `OR`, `NOT`) e **PhraseQuery** esatta posizionale con virgolette `"..."`.
   - Stampa ordinata con metadati completi: hit totali, tempo di esecuzione in millisecondi, score probabilistico BM25, nome del file e percorso relativo/assoluto.
 - **Suite di Benchmark Multi-Dominio su Collezioni Reali di Letteratura IR**:
-  - Integrazione automatica e download on-the-fly con caching di 3 collezioni consolidate:
-    1. **CISI**: 1.460 abstract in *Information Science*.
-    2. **Cranfield**: 1.398 abstract in *Ingegneria Aeronautica*.
-    3. **20 Newsgroups (Comp/Sci)**: 900 post Usenet reali in *Informatica, Hardware e Crittografia*.
+  - Integrazione automatica e download on-the-fly con caching locale (`data/corpora/.cache`) di 3 collezioni consolidate della letteratura IR:
+    1. **CISI** (1.460 abstract in *Information Science*): [CISI.ALL](https://raw.githubusercontent.com/GianRomani/CISI-project-MLOps/refs/heads/main/CISI.ALL) e [CISI.QRY](https://raw.githubusercontent.com/GianRomani/CISI-project-MLOps/refs/heads/main/CISI.QRY).
+    2. **Cranfield** (1.398 abstract in *Ingegneria Aeronautica*): [cran.all.1400](https://raw.githubusercontent.com/Kmahmoudi/Information-Retrieval-System/master/cran.all.1400).
+    3. **20 Newsgroups (Comp/Sci)** (900 post Usenet in *Informatica, Hardware e Crittografia*): [UCI Machine Learning Repository](https://archive.ics.uci.edu/static/public/113/twenty+newsgroups.zip).
+  - *Zero overhead sul repository*: i dataset e gli indici fisici non sono tracciati in git (`.gitignore`); il componente `CorpusDatasetManager` effettua il download automatico solo alla prima invocazione del benchmark.
   - Suite di 27 query autentiche derivate dai topic IR originali.
   - Misurazione tempi di indicizzazione, throughput (docs/s e MB/s), footprint su disco e latenze di risposta.
 - **Architettura OOA/D Rigorosa**:
