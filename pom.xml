@@ -80,6 +80,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+                <configuration>
+                    <argLine>--add-modules jdk.incubator.vector</argLine>
+                </configuration>
             </plugin>
 
             <!-- Maven Exec Plugin for CLI & Benchmark execution -->
@@ -89,6 +92,7 @@
                 <version>3.2.0</version>
                 <configuration>
                     <mainClass>it.uniroma3.hw3.cli.SearchApp</mainClass>
+                    <commandlineArgs></commandlineArgs>
                 </configuration>
             </plugin>
 
